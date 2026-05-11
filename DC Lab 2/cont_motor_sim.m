@@ -1,11 +1,13 @@
 % 1. Load the external data first
+close all;
+clc;
 loaded_data = load('voltageInput.mat');
 ts_custom = loaded_data.Voltage; % Extract the timeseries object
 
 % 2. Define parameters for synthetic inputs
 t = 0:0.01:5; 
 deadzone_volt = 1;
-saturation_volt = 24;
+saturation_volt = 35;
 
 % 3. Create synthetic timeseries inputs
 % 10V step (steps from 0 to 10 at t = 1s)
