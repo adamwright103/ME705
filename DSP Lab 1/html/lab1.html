@@ -1,0 +1,526 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      -->
+<title>lab1</title>
+<meta name="generator" content="MATLAB 24.2">
+<link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
+<meta name="DC.date" content="2026-04-28">
+<meta name="DC.source" content="lab1.m">
+<style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; }
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.typesection { color:#A0522D }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style>
+</head>
+<body>
+<div class="content">
+<pre class="codeinput">
+<span class="comment">% ME705 Lab 1</span>
+<span class="comment">% 1.7 Preperation</span>
+<span class="comment">% Author: Adam Wright</span>
+clc
+clear
+close <span class="string">all</span>
+
+<span class="comment">% -- 1.71 --</span>
+
+<span class="comment">%</span>
+<span class="comment">% Task 1</span>
+<span class="comment">%</span>
+fs = 8000; <span class="comment">% Hz</span>
+x = dtmfdial(<span class="string">'0212560185'</span>);
+sound(x, fs);
+
+<span class="comment">%</span>
+<span class="comment">% Task 2</span>
+<span class="comment">%</span>
+
+figure(1);
+hold <span class="string">on</span>;
+t = (0:length(x)-1) / fs;
+plot(t, x);
+title(<span class="string">'Waveform of DTMF Signal'</span>);
+xlabel(<span class="string">'Time (seconds)'</span>);
+ylabel(<span class="string">'Amplitude'</span>);
+xlim([0 max(t)]);
+hold <span class="string">off</span>
+
+figure(2);
+hold <span class="string">on</span>;
+win_length = 200;
+window = hamming(win_length);
+noverlap = round(win_length * 0.5);
+nfft = 400;
+spectrogram(x, window, noverlap, nfft, fs, <span class="string">'yaxis'</span>);
+title(<span class="string">'Spectrogram of DTMF Signal'</span>);
+ylim([0 2.5]);
+hold <span class="string">off</span>;
+
+<span class="comment">% -- 1.72 --</span>
+
+<span class="comment">%</span>
+<span class="comment">% Task 1</span>
+<span class="comment">%</span>
+
+N = 4096;
+L = 50;
+omega_c = 0.2 * pi;
+nn = 0:L;
+
+b_unscaled = cos(omega_c * nn);
+[H, ~] = freqz(b_unscaled, 1, N);
+
+peak_val = max(abs(H));
+beta = 1 / peak_val; <span class="comment">% 0.038424</span>
+b = beta * cos(omega_c * nn);
+
+fprintf(<span class="string">"1.7.2 value of beta: %.3f"</span>, beta);
+
+<span class="comment">%</span>
+<span class="comment">% Task 2</span>
+<span class="comment">%</span>
+
+[H, W] = freqz(b, 1, N);
+passband_idxs = find(abs(H) &gt; 1/sqrt(2));
+
+f_cl = W(passband_idxs(1)); <span class="comment">% rad/sample</span>
+f_ch = W(passband_idxs(end)); <span class="comment">% rad/sample</span>
+
+bw = f_ch - f_cl; <span class="comment">% rad/sample</span>
+
+fprintf(<span class="string">'\n1.72: Passband %6.2f - %6.2f (BW: %6.2f)'</span>, f_cl, f_ch, bw);
+
+<span class="comment">%</span>
+<span class="comment">% Task 3</span>
+<span class="comment">%</span>
+
+f_cl_hz = (f_cl * fs) / (2 * pi); <span class="comment">% 735.4 Hz</span>
+f_ch_hz = (f_ch * fs) / (2 * pi); <span class="comment">% 871.1 Hz</span>
+bw_hz = (bw * fs) / (2 * pi);     <span class="comment">% 135.7 Hz</span>
+
+fprintf(<span class="string">'\n1.72: Passband %6.1f Hz - %6.1f (BW: %6.1f)'</span>, f_cl_hz, f_ch_hz, bw_hz);
+
+<span class="comment">% -- 1.8.1 --</span>
+
+<span class="comment">%</span>
+<span class="comment">% Task 3, 4</span>
+<span class="comment">%</span>
+fcent = [697,770,852,941,1209,1336,1477,1633];  <span class="comment">% DTMF centre frequencies</span>
+LL = [40, 80]; <span class="comment">% Array of filter lengths to compare</span>
+N = 4096;
+
+<span class="comment">% Outer loop to go through each filter order (40, then 80)</span>
+<span class="keyword">for</span> k = 1:length(LL)
+    L = LL(k);
+
+    <span class="comment">% 1. Generate the eight bandpass filters for the current L</span>
+    hh = dtmfdesign(fcent, L, fs);
+
+    <span class="comment">% 2. Open a new figure for each L (so they plot separately)</span>
+    figure;
+    hold <span class="string">on</span>;
+
+    <span class="comment">% Print a header to the command window to keep results organized</span>
+    fprintf(<span class="string">'\n--- Passband Widths for L = %d ---\n'</span>, L);
+
+    <span class="comment">% 3. Loop through each filter to plot and find bandwidths</span>
+    <span class="keyword">for</span> i = 1:length(fcent)
+        <span class="comment">% Extract the i-th filter's impulse response (row vector)</span>
+        h_i = hh(i, :);
+
+        <span class="comment">% Calculate the frequency response</span>
+        [H, W] = freqz(h_i, 1, N);
+
+        <span class="comment">% Plot the magnitude response</span>
+        plot(W, abs(H), <span class="string">'DisplayName'</span>, [num2str(fcent(i)), <span class="string">' Hz'</span>]);
+
+        <span class="comment">% Find cut-off frequencies (where magnitude &gt; 1/sqrt(2))</span>
+        passband_idxs = find(abs(H) &gt; 1/sqrt(2));
+
+        <span class="comment">% Ensure we found a valid passband to avoid errors</span>
+        <span class="keyword">if</span> ~isempty(passband_idxs)
+            <span class="comment">% Extract lower and upper cut-off frequencies in rad/sample</span>
+            f_cl = W(passband_idxs(1));
+            f_ch = W(passband_idxs(end));
+
+            <span class="comment">% Calculate passband width in rad/sample, then convert to Hz</span>
+            bw_rad = f_ch - f_cl;
+            bw_hz = (bw_rad * fs) / (2 * pi);
+
+            <span class="comment">% Print the result to the command window</span>
+            fprintf(<span class="string">'Center Freq: %4d Hz | Bandwidth: %6.1f Hz | Passband (Hz): [%4.2f, %4.2f]\n'</span>, fcent(i), bw_hz, (f_cl * fs) / (2*pi), (f_ch * fs) / (2*pi));
+        <span class="keyword">else</span>
+            fprintf(<span class="string">'Center Freq: %4d Hz | Bandwidth: Not Found\n'</span>, fcent(i));
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+
+    <span class="comment">% 4. Format the plot according to the specifications</span>
+    title([<span class="string">'Magnitude of Frequency Responses for 8 DTMF BPFs (L = '</span>, num2str(L), <span class="string">')'</span>]);
+    xlabel(<span class="string">'Normalised Frequency (\Omega) [rad/sample]'</span>);
+    ylabel(<span class="string">'Magnitude |H(e^{j\Omega})|'</span>);
+    xlim([0, pi]); <span class="comment">% Limit x-axis to 0 &lt;= Omega &lt;= pi</span>
+    grid <span class="string">on</span>;
+    legend(<span class="string">'Location'</span>, <span class="string">'best'</span>); <span class="comment">% Add a legend to tell the filters apart</span>
+    hold <span class="string">off</span>;
+<span class="keyword">end</span>
+
+<span class="comment">%</span>
+<span class="comment">% Task 6</span>
+<span class="comment">%</span>
+L_min = getMinOrder(fcent, fs);
+fprintf(<span class="string">'\nThe minimum value of L that satisfies all specifications is L = %d\n'</span>, L_min);
+
+<span class="comment">% -- 1.8.4 --</span>
+group = 15;
+fname = sprintf(<span class="string">'unknown_number_%d.mat'</span>, group);
+load(fname);
+
+keys = dtmfrun(xx, L_min, fs);
+
+fprintf(<span class="string">'\ndecoded keys for group %d: %s\n'</span>, group, keys);
+
+<span class="comment">% -- 1.8.5 --</span>
+
+target_number = <span class="string">'01205978436'</span>;
+min_snr = getMinSNR(target_number, L_min);
+
+fprintf(<span class="string">'The minimum SNR for a &gt;= 90%% success rate is: %d dB\n'</span>, min_snr);
+
+<span class="comment">% -- 1.8.6 --</span>
+
+<span class="comment">%</span>
+<span class="comment">% Hamming Window</span>
+<span class="comment">%</span>
+
+fprintf(<span class="string">"--- Hamming ---\n"</span>);
+L_new = getMinOrder(fcent, fs, @dtmfdesignHamming);
+fprintf(<span class="string">'The minimum value of L that satisfies all specifications is L = %d\n'</span>, L_new);
+
+min_snr = getMinSNR(target_number, L_min);
+fprintf(<span class="string">'The minimum SNR (L=%d) for a &gt;= 90%% success rate is: %d dB\n'</span>, L_min, min_snr);
+
+
+<span class="comment">%</span>
+<span class="comment">% all improvments</span>
+<span class="comment">%</span>
+fprintf(<span class="string">"--- ALL ---\n"</span>);
+min_snr = getMinSNR(target_number, L_min, false);
+fprintf(<span class="string">'The minimum SNR (L=%d) for a &gt;= 90%% success rate is: %d dB\n'</span>, L_min, min_snr);
+
+min_snr = getMinSNR(target_number, L_min, true);
+fprintf(<span class="string">'The minimum SNR (L=%d) for a &gt;= 90%% success rate is: %d dB\n'</span>, L_min, min_snr);
+
+min_snr = getMinSNR(target_number, L_min*2, false);
+fprintf(<span class="string">'The minimum SNR (L=%d) for a &gt;= 90%% success rate is: %d dB\n'</span>, L_min, min_snr);
+</pre>
+<pre class="codeoutput">1.7.2 value of beta: 0.038
+1.72: Passband   0.58 -   0.68 (BW:   0.11)
+1.72: Passband  735.4 Hz -  871.1 (BW:  135.7)
+--- Passband Widths for L = 40 ---
+Center Freq:  697 Hz | Bandwidth:  167.0 Hz | Passband (Hz): [620.12, 787.11]
+Center Freq:  770 Hz | Bandwidth:  172.9 Hz | Passband (Hz): [687.50, 860.35]
+Center Freq:  852 Hz | Bandwidth:  172.9 Hz | Passband (Hz): [765.62, 938.48]
+Center Freq:  941 Hz | Bandwidth:  169.9 Hz | Passband (Hz): [855.47, 1025.39]
+Center Freq: 1209 Hz | Bandwidth:  167.0 Hz | Passband (Hz): [1126.95, 1293.95]
+Center Freq: 1336 Hz | Bandwidth:  169.9 Hz | Passband (Hz): [1250.00, 1419.92]
+Center Freq: 1477 Hz | Bandwidth:  170.9 Hz | Passband (Hz): [1394.53, 1565.43]
+Center Freq: 1633 Hz | Bandwidth:  169.9 Hz | Passband (Hz): [1546.88, 1716.80]
+
+--- Passband Widths for L = 80 ---
+Center Freq:  697 Hz | Bandwidth:   85.0 Hz | Passband (Hz): [656.25, 741.21]
+Center Freq:  770 Hz | Bandwidth:   85.9 Hz | Passband (Hz): [726.56, 812.50]
+Center Freq:  852 Hz | Bandwidth:   85.0 Hz | Passband (Hz): [810.55, 895.51]
+Center Freq:  941 Hz | Bandwidth:   85.9 Hz | Passband (Hz): [899.41, 985.35]
+Center Freq: 1209 Hz | Bandwidth:   85.9 Hz | Passband (Hz): [1166.02, 1251.95]
+Center Freq: 1336 Hz | Bandwidth:   85.9 Hz | Passband (Hz): [1293.95, 1379.88]
+Center Freq: 1477 Hz | Bandwidth:   86.9 Hz | Passband (Hz): [1433.59, 1520.51]
+Center Freq: 1633 Hz | Bandwidth:   86.9 Hz | Passband (Hz): [1589.84, 1676.76]
+
+The minimum value of L that satisfies all specifications is L = 86
+
+decoded keys for group 15: 099239617
+The minimum SNR for a &gt;= 90% success rate is: 8 dB
+--- Hamming ---
+The minimum value of L that satisfies all specifications is L = 137
+The minimum SNR (L=86) for a &gt;= 90% success rate is: 8 dB
+--- ALL ---
+The minimum SNR (L=86) for a &gt;= 90% success rate is: 8 dB
+The minimum SNR (L=86) for a &gt;= 90% success rate is: 0 dB
+The minimum SNR (L=86) for a &gt;= 90% success rate is: 8 dB
+</pre>
+<img vspace="5" hspace="5" src="lab1_01.png" alt=""> <img vspace="5" hspace="5" src="lab1_02.png" alt=""> <img vspace="5" hspace="5" src="lab1_03.png" alt=""> <img vspace="5" hspace="5" src="lab1_04.png" alt=""> <p class="footer">
+<br>
+<a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2024b</a>
+<br>
+</p>
+</div>
+<!--
+##### SOURCE BEGIN #####
+% ME705 Lab 1
+% 1.7 Preperation
+% Author: Adam Wright
+clc
+clear
+close all
+
+% REPLACE_WITH_DASH_DASH 1.71 REPLACE_WITH_DASH_DASH
+
+% 
+% Task 1
+%
+fs = 8000; % Hz
+x = dtmfdial('0212560185');
+sound(x, fs);
+
+%
+% Task 2
+%
+
+figure(1);
+hold on;
+t = (0:length(x)-1) / fs;
+plot(t, x);
+title('Waveform of DTMF Signal');
+xlabel('Time (seconds)');
+ylabel('Amplitude');
+xlim([0 max(t)]);
+hold off
+
+figure(2);
+hold on;
+win_length = 200;
+window = hamming(win_length);
+noverlap = round(win_length * 0.5);
+nfft = 400;
+spectrogram(x, window, noverlap, nfft, fs, 'yaxis');
+title('Spectrogram of DTMF Signal');
+ylim([0 2.5]);
+hold off;
+
+% REPLACE_WITH_DASH_DASH 1.72 REPLACE_WITH_DASH_DASH
+
+% 
+% Task 1
+%
+
+N = 4096;
+L = 50;
+omega_c = 0.2 * pi;
+nn = 0:L; 
+
+b_unscaled = cos(omega_c * nn);
+[H, ~] = freqz(b_unscaled, 1, N); 
+
+peak_val = max(abs(H));
+beta = 1 / peak_val; % 0.038424
+b = beta * cos(omega_c * nn);
+
+fprintf("1.7.2 value of beta: %.3f", beta);
+
+%
+% Task 2
+%
+
+[H, W] = freqz(b, 1, N); 
+passband_idxs = find(abs(H) > 1/sqrt(2));
+
+f_cl = W(passband_idxs(1)); % rad/sample
+f_ch = W(passband_idxs(end)); % rad/sample
+
+bw = f_ch - f_cl; % rad/sample
+
+fprintf('\n1.72: Passband %6.2f - %6.2f (BW: %6.2f)', f_cl, f_ch, bw);
+
+%
+% Task 3
+%
+
+f_cl_hz = (f_cl * fs) / (2 * pi); % 735.4 Hz
+f_ch_hz = (f_ch * fs) / (2 * pi); % 871.1 Hz
+bw_hz = (bw * fs) / (2 * pi);     % 135.7 Hz
+
+fprintf('\n1.72: Passband %6.1f Hz - %6.1f (BW: %6.1f)', f_cl_hz, f_ch_hz, bw_hz);
+
+% REPLACE_WITH_DASH_DASH 1.8.1 REPLACE_WITH_DASH_DASH
+
+% 
+% Task 3, 4
+%
+fcent = [697,770,852,941,1209,1336,1477,1633];  % DTMF centre frequencies
+LL = [40, 80]; % Array of filter lengths to compare
+N = 4096;
+
+% Outer loop to go through each filter order (40, then 80)
+for k = 1:length(LL)
+    L = LL(k);
+    
+    % 1. Generate the eight bandpass filters for the current L
+    hh = dtmfdesign(fcent, L, fs);
+    
+    % 2. Open a new figure for each L (so they plot separately)
+    figure; 
+    hold on;
+    
+    % Print a header to the command window to keep results organized
+    fprintf('\nREPLACE_WITH_DASH_DASH- Passband Widths for L = %d REPLACE_WITH_DASH_DASH-\n', L);
+    
+    % 3. Loop through each filter to plot and find bandwidths
+    for i = 1:length(fcent)
+        % Extract the i-th filter's impulse response (row vector)
+        h_i = hh(i, :); 
+        
+        % Calculate the frequency response
+        [H, W] = freqz(h_i, 1, N);
+        
+        % Plot the magnitude response 
+        plot(W, abs(H), 'DisplayName', [num2str(fcent(i)), ' Hz']);
+        
+        % Find cut-off frequencies (where magnitude > 1/sqrt(2))
+        passband_idxs = find(abs(H) > 1/sqrt(2));
+        
+        % Ensure we found a valid passband to avoid errors
+        if ~isempty(passband_idxs)
+            % Extract lower and upper cut-off frequencies in rad/sample
+            f_cl = W(passband_idxs(1));
+            f_ch = W(passband_idxs(end));
+            
+            % Calculate passband width in rad/sample, then convert to Hz
+            bw_rad = f_ch - f_cl;
+            bw_hz = (bw_rad * fs) / (2 * pi);
+            
+            % Print the result to the command window 
+            fprintf('Center Freq: %4d Hz | Bandwidth: %6.1f Hz | Passband (Hz): [%4.2f, %4.2f]\n', fcent(i), bw_hz, (f_cl * fs) / (2*pi), (f_ch * fs) / (2*pi));
+        else
+            fprintf('Center Freq: %4d Hz | Bandwidth: Not Found\n', fcent(i));
+        end
+    end
+    
+    % 4. Format the plot according to the specifications
+    title(['Magnitude of Frequency Responses for 8 DTMF BPFs (L = ', num2str(L), ')']);
+    xlabel('Normalised Frequency (\Omega) [rad/sample]');
+    ylabel('Magnitude |H(e^{j\Omega})|');
+    xlim([0, pi]); % Limit x-axis to 0 <= Omega <= pi
+    grid on;
+    legend('Location', 'best'); % Add a legend to tell the filters apart
+    hold off;
+end
+
+% 
+% Task 6
+%
+L_min = getMinOrder(fcent, fs);
+fprintf('\nThe minimum value of L that satisfies all specifications is L = %d\n', L_min);
+
+% REPLACE_WITH_DASH_DASH 1.8.4 REPLACE_WITH_DASH_DASH
+group = 15;
+fname = sprintf('unknown_number_%d.mat', group);
+load(fname);
+
+keys = dtmfrun(xx, L_min, fs);
+
+fprintf('\ndecoded keys for group %d: %s\n', group, keys);
+
+% REPLACE_WITH_DASH_DASH 1.8.5 REPLACE_WITH_DASH_DASH
+
+target_number = '01205978436'; 
+min_snr = getMinSNR(target_number, L_min);
+
+fprintf('The minimum SNR for a >= 90%% success rate is: %d dB\n', min_snr);
+
+% REPLACE_WITH_DASH_DASH 1.8.6 REPLACE_WITH_DASH_DASH
+
+% 
+% Hamming Window
+%
+
+fprintf("REPLACE_WITH_DASH_DASH- Hamming REPLACE_WITH_DASH_DASH-\n");
+L_new = getMinOrder(fcent, fs, @dtmfdesignHamming);
+fprintf('The minimum value of L that satisfies all specifications is L = %d\n', L_new);
+
+min_snr = getMinSNR(target_number, L_min);
+fprintf('The minimum SNR (L=%d) for a >= 90%% success rate is: %d dB\n', L_min, min_snr);
+
+
+%
+% all improvments
+%
+fprintf("REPLACE_WITH_DASH_DASH- ALL REPLACE_WITH_DASH_DASH-\n");
+min_snr = getMinSNR(target_number, L_min, false);
+fprintf('The minimum SNR (L=%d) for a >= 90%% success rate is: %d dB\n', L_min, min_snr);
+
+min_snr = getMinSNR(target_number, L_min, true);
+fprintf('The minimum SNR (L=%d) for a >= 90%% success rate is: %d dB\n', L_min, min_snr);
+
+min_snr = getMinSNR(target_number, L_min*2, false);
+fprintf('The minimum SNR (L=%d) for a >= 90%% success rate is: %d dB\n', L_min, min_snr);
+
+
+
+
+
+##### SOURCE END #####
+-->
+</body>
+</html>
