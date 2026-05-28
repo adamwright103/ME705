@@ -6,6 +6,7 @@ ts_custom = loaded_data.Voltage; % Extract the timeseries object
 
 % 2. Define parameters for synthetic inputs
 t = 0:0.01:5; 
+[num_Hs, den_Hs] = setupGantryModel();
 
 % 3. Create synthetic timeseries inputs
 % 10V step (steps from 0 to 10 at t = 0.5s)
@@ -71,8 +72,6 @@ for i = 1:length(v_in_list)
     subplot(2,1,1);
     plot(t_in, v_in, 'b-', 'LineWidth', 1.5);
     hold on;
-    yline(saturation_volt, 'r--', sprintf('Saturation Limit (+%gV)', saturation_volt));
-    yline(-saturation_volt, 'r--', sprintf('Saturation Limit (-%gV)', saturation_volt));
     
     title(sprintf('Input Control Effort: %s', input_names{i}));
     xlabel('Time (s)');
