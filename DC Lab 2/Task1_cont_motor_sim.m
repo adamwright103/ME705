@@ -1,6 +1,7 @@
 % 1. Load the external data first
-close all;
-clc;
+clear; clc; close all;
+set(0, 'DefaultFigureWindowStyle', 'docked');
+
 loaded_data = load('voltageInput.mat');
 ts_custom = loaded_data.Voltage; % Extract the timeseries object
 
