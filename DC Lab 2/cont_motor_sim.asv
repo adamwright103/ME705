@@ -71,6 +71,8 @@ for i = 1:length(v_in_list)
     subplot(2,1,1);
     plot(t_in, v_in, 'b-', 'LineWidth', 1.5);
     hold on;
+    yline(saturation_volt, 'r--', sprintf('Saturation Limit (+%gV)', saturation_volt));
+    yline(-saturation_volt, 'r--', sprintf('Saturation Limit (-%gV)', saturation_volt));
     
     title(sprintf('Input Control Effort: %s', input_names{i}));
     xlabel('Time (s)');
