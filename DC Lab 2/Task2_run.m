@@ -21,33 +21,63 @@ q1 = ((p1 * p2) - den_P_root) / num_P;
 num_C = [q0, q1]; 
 den_C = [1, -1];  
 
+% 5. FORCE FIXED TIME STEP (0.0001s) ON BOTH SIMULINK MODELS
+% This modifies the configuration in memory without altering your hard files.
+models = {'MotorSlider_Sim_controlled', 'MotorSlider_RS_controlled'};
+for m = 1:length(models)
+    load_system(models{m}); 
+    set_param(models{m}, 'SolverType', 'Fixed-step');
+    set_param(models{m}, 'FixedStep', '0.0001');
+end
+
 %% --- Execution & Analysis (Baseline Nominal Run) ---
-out = sim('MotorSlider_Sim_controlled.slx');
-time = out.VelocityDB.Time;
-vel_DB = out.VelocityDB.Data;
-vel_P = out.VelocityP.Data;
 
-ref_signal = zeros(size(time));
-ref_signal(time >= 0.3) = velocityStep;
+% Simulate Simplified Model
+out_Sim = sim('MotorSlider_Sim_controlled');
+time_Sim = out_Sim.VelocityDB.Time;
+vel_DB_Sim = out_Sim.VelocityDB.Data;
+vel_P_Sim = out_Sim.VelocityP.Data;
 
-% --- Figure 1: Baseline Comparison ---
-figure('Name', 'Controller Comparison (Nominal)');
+% Simulate Realistic Model
+out_RS = sim('MotorSlider_RS_controlled');
+time_RS = out_RS.VelocityDB.Time;
+vel_DB_RS = out_RS.VelocityDB.Data;
+vel_P_RS = out_RS.VelocityP.Data;
+
+% Generate Reference Signal (using time from simplified model for plotting)
+ref_signal = zeros(size(time_Sim));
+ref_signal(time_Sim >= 0.3) = velocityStep;
+
+% --- Figure 1: Baseline Comparison (Simple vs Realistic) ---
+figure('Name', 'Controller Comparison (Nominal: Simple vs Realistic)');
+
+% Deadbeat Comparison Subplot
 subplot(2,1,1);
-plot(time, ref_signal, 'k--', 'LineWidth', 1.5); hold on;
-plot(time, vel_DB, 'b-', 'LineWidth', 1.5);
-title('Deadbeat Controller Output vs Reference (Nominal)');
-xlabel('Time (s)'); ylabel('Velocity'); legend('Reference', 'Deadbeat', 'Location', 'best'); grid on;
+plot(time_Sim, ref_signal, 'k--', 'LineWidth', 1.5); hold on;
+plot(time_Sim, vel_DB_Sim, 'b-', 'LineWidth', 1.5);
+plot(time_RS, vel_DB_RS, 'r--', 'LineWidth', 1.5);
+title('Deadbeat Controller Output: Simplified vs. Realistic Plant');
+xlabel('Time (s)'); ylabel('Velocity'); 
+legend('Reference', 'Deadbeat (Simple Plant)', 'Deadbeat (Realistic Plant)', 'Location', 'best'); 
+grid on;
 
+% Pole Placement Comparison Subplot
 subplot(2,1,2);
-plot(time, ref_signal, 'k--', 'LineWidth', 1.5); hold on;
-plot(time, vel_P, 'r-', 'LineWidth', 1.5);
-title('Pole Placement Controller Output vs Reference (Nominal)');
-xlabel('Time (s)'); ylabel('Velocity'); legend('Reference', 'Pole Placement', 'Location', 'best'); grid on;
+plot(time_Sim, ref_signal, 'k--', 'LineWidth', 1.5); hold on;
+plot(time_Sim, vel_P_Sim, 'b-', 'LineWidth', 1.5);
+plot(time_RS, vel_P_RS, 'r--', 'LineWidth', 1.5);
+title('Pole Placement Controller Output: Simplified vs. Realistic Plant');
+xlabel('Time (s)'); ylabel('Velocity'); 
+legend('Reference', 'Pole Placement (Simple Plant)', 'Pole Placement (Realistic Plant)', 'Location', 'best'); 
+grid on;
+
 
 %% --- AUTOMATED SENSITIVITY TESTING ---
+% (Testing only on the simplified model as per design requirements)
+
 % Define Test Vectors
 numVariations = 5;
-mass_vec = linspace(0.75, 1.75, numVariations);
+mass_vec = linspace(0.5, 2.5, numVariations);
 speed_vec = linspace(0.2, 1, numVariations);
 noise_vec = [0, 1e-9, 1e-8, 1e-7, 1e-6]; % Log scale range for noise
 
@@ -56,7 +86,7 @@ velocityStep = 0.7;
 noise_power = 0;
 for i = 1:length(mass_vec)
     [num_Hs, den_Hs] = setupGantryModel(mass_vec(i)); 
-    out_sim = sim('MotorSlider_Sim_controlled.slx');
+    out_sim = sim('MotorSlider_Sim_controlled');
     
     t_sim = out_sim.VelocityP.Time;
     v_sim_P = out_sim.VelocityP.Data;
@@ -77,7 +107,7 @@ end
 noise_power = 0;
 for j = 1:length(speed_vec)
     velocityStep = speed_vec(j); 
-    out_sim = sim('MotorSlider_Sim_controlled.slx');
+    out_sim = sim('MotorSlider_Sim_controlled');
     
     t_sim = out_sim.VelocityP.Time;
     v_sim_P = out_sim.VelocityP.Data;
@@ -98,7 +128,7 @@ end
 velocityStep = 0.7;                       % Reset speed
 for k = 1:length(noise_vec)
     noise_power = noise_vec(k);
-    out_sim = sim('MotorSlider_Sim_controlled.slx');
+    out_sim = sim('MotorSlider_Sim_controlled');
     
     t_sim = out_sim.VelocityP.Time;
     v_sim_P = out_sim.VelocityP.Data;
@@ -157,7 +187,6 @@ title('Deadbeat: Mass Variation'); xlabel('Time (s)'); ylabel('Velocity'); legen
 subplot(2, 3, 2); hold on; grid on;
 plot([0, 0.3, 0.3, t_max], [0, 0, 1, 1], 'k--', 'LineWidth', 1.5, 'DisplayName', 'Reference');
 for j = 1:length(speed_vec)
-    % Normalize by dividing output by the specific speed setpoint
     plot(hist_speed_t{j}, hist_speed_DB{j} / speed_vec(j), 'Color', colors(j,:), 'DisplayName', sprintf('Speed = %.2f', speed_vec(j)));
 end
 title('Deadbeat: Speed Variation (Normalized)'); xlabel('Time (s)'); ylabel('Norm. Velocity'); legend('Location','best');
@@ -194,6 +223,8 @@ for k = 1:length(noise_vec)
     plot(hist_noise_t{k}, hist_noise_P{k}, 'Color', colors(k,:), 'DisplayName', sprintf('Noise = %g', noise_vec(k)));
 end
 title('Pole Placement: Noise Variation'); xlabel('Time (s)'); ylabel('Velocity'); legend('Location','best');
+
+
 %% --- Local Functions ---
 function [rise_time, overshoot, settling_time] = calculate_step_metrics(t, y, ref)
     % 1. Overshoot %

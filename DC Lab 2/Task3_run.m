@@ -31,7 +31,7 @@ stop_times  = {num2str(t_step(end)), num2str(t_ramp(end)), num2str(t_smooth(end)
 interp_meth = {'previous', 'linear', 'linear'}; % 'previous' keeps step edges sharp
 
 %% 2. Iterative Tuning (IFT) Setup
-num_iterations = 3000; % Change this to 500 once you confirm stability!
+num_iterations = 1500; % Change this to 500 once you confirm stability!
 
 % --- FIX B: Safety Guardrails (Maximum allowed gain change per iteration) ---
 max_step_kp = 5.0;   % Kp cannot jump by more than 5.0 in one iteration
