@@ -31,11 +31,18 @@ stop_times  = {num2str(t_step(end)), num2str(t_ramp(end)), num2str(t_smooth(end)
 interp_meth = {'previous', 'linear', 'linear'}; % 'previous' keeps step edges sharp
 
 %% 2. Iterative Tuning (IFT) Setup
-num_iterations = 30; 
-delta = 1e-2;        
-alpha_p = 500000;     % Down from 500,000
-alpha_i = 5000;    % Down from 5,000
-alpha_d = 300;   % Down from 300
+num_iterations = 3000; % Change this to 500 once you confirm stability!
+
+% --- FIX B: Safety Guardrails (Maximum allowed gain change per iteration) ---
+max_step_kp = 5.0;   % Kp cannot jump by more than 5.0 in one iteration
+max_step_ki = 0.05;  % Ki cannot jump by more than 0.05 in one iteration
+max_step_kd = 0.02;  % Kd cannot jump by more than 0.02 in one iteration
+
+% Tuning Learning Rates (Alphas)
+% Note: Because relative deltas alter gradient scales, you may want to play with these.
+alpha_p = 500000;     
+alpha_i = 15000;     % Slightly bumped up to help Ki wake up
+alpha_d = 300;   
 
 % Arrays to store the final tuned parameters
 tuned_kp = zeros(1, 3);
@@ -55,7 +62,7 @@ for i = 1:3
     fprintf('==================================================\n');
     
     % Reset to initial gains for each training session
-    kp = 265.8; ki = 1; kd = 0.1;
+    kp = 265.8; ki = 0.001; kd = 0.1;
     
     % Set the current training trajectory and stop time
     t_current = inputs_time{i};
@@ -65,8 +72,27 @@ for i = 1:3
     for iter = 1:num_iterations
         % --- Step A: Nominal Simulation ---
         simOut = sim('MotorSlider_Sim_IFT.slx', 'StopTime', t_stop);
-        if isa(simOut.error, 'timeseries'); err_nom = simOut.error.Data; else; err_nom = simOut.error; end
-        J_nom = mean(err_nom.^2, 'omitnan');
+        if isa(simOut.error, 'timeseries')
+            err_nom = simOut.error.Data; 
+            t_arr = simOut.error.Time;
+        else
+            err_nom = simOut.error; 
+            t_arr = simOut.tout;
+        end
+        
+        % --- FIX C: Dynamic Multi-Window Masking for Step Discontinuities ---
+        if i == 1
+            step_edges = [0, 1, 2, 3, 4]; % Exact times your steps occur
+            W = 0.12;                     % Masking window: 60ms (3 sample periods)
+            mask = true(size(t_arr));
+            for e = step_edges
+                % Set mask to false only during the immediate transient window
+                mask = mask & ~(t_arr >= e & t_arr < (e + W));
+            end
+            J_nom = mean(err_nom(mask).^2, 'omitnan');
+        else
+            J_nom = mean(err_nom.^2, 'omitnan');
+        end
         
         % Store history for plots (convert MSE to RMSE in mm)
         history_rmse(i, iter) = sqrt(J_nom) * 1000; 
@@ -76,34 +102,62 @@ for i = 1:3
         
         fprintf('Iter %2d | Kp: %6.4f | Ki: %6.4f | Kd: %6.4f | MSE: %.6f\n', iter, kp, ki, kd, J_nom);
             
-        % --- Step B: Perturb Kp ---
-        kp = kp + delta;
+        % --- Step B: Perturb Kp (FIX A: Relative Delta) ---
+        delta_p = max(1e-4, 0.005 * kp); 
+        kp = kp + delta_p;
         simOut = sim('MotorSlider_Sim_IFT.slx', 'StopTime', t_stop);
-        if isa(simOut.error, 'timeseries'); err_p = simOut.error.Data; else; err_p = simOut.error; end
-        J_p = mean(err_p.^2, 'omitnan');
-        grad_p = (J_p - J_nom) / delta;
-        kp = kp - delta;
+        if isa(simOut.error, 'timeseries'); err_p = simOut.error.Data; t_arr = simOut.error.Time; else; err_p = simOut.error; t_arr = simOut.tout; end
         
-        % --- Step C: Perturb Ki ---
-        ki = ki + delta;
+        if i == 1
+            J_p = mean(err_p(mask).^2, 'omitnan'); % Reuses the exact same step mask
+        else
+            J_p = mean(err_p.^2, 'omitnan');
+        end
+        grad_p = (J_p - J_nom) / delta_p;
+        kp = kp - delta_p;
+        
+        % --- Step C: Perturb Ki (FIX A: Relative Delta) ---
+        delta_i = max(1e-4, 0.01 * ki); 
+        ki = ki + delta_i;
         simOut = sim('MotorSlider_Sim_IFT.slx', 'StopTime', t_stop);
-        if isa(simOut.error, 'timeseries'); err_i = simOut.error.Data; else; err_i = simOut.error; end
-        J_i = mean(err_i.^2, 'omitnan');
-        grad_i = (J_i - J_nom) / delta;
-        ki = ki - delta;
+        if isa(simOut.error, 'timeseries'); err_i = simOut.error.Data; t_arr = simOut.error.Time; else; err_i = simOut.error; t_arr = simOut.tout; end
         
-        % --- Step D: Perturb Kd ---
-        kd = kd + delta;
+        if i == 1
+            J_i = mean(err_i(mask).^2, 'omitnan');
+        else
+            J_i = mean(err_i.^2, 'omitnan');
+        end
+        grad_i = (J_i - J_nom) / delta_i;
+        ki = ki - delta_i;
+        
+        % --- Step D: Perturb Kd (FIX A: Relative Delta) ---
+        delta_d = max(1e-4, 0.01 * kd); 
+        kd = kd + delta_d;
         simOut = sim('MotorSlider_Sim_IFT.slx', 'StopTime', t_stop);
-        if isa(simOut.error, 'timeseries'); err_d = simOut.error.Data; else; err_d = simOut.error; end
-        J_d = mean(err_d.^2, 'omitnan');
-        grad_d = (J_d - J_nom) / delta;
-        kd = kd - delta;
+        if isa(simOut.error, 'timeseries'); err_d = simOut.error.Data; t_arr = simOut.error.Time; else; err_d = simOut.error; t_arr = simOut.tout; end
         
-        % --- Step E: Update Parameters ---
-        kp = max(0.001, kp - alpha_p * grad_p);
-        ki = max(0.001, ki - alpha_i * grad_i);
-        kd = max(0.000, kd - alpha_d * grad_d);
+        if i == 1
+            J_d = mean(err_d(mask).^2, 'omitnan');
+        else
+            J_d = mean(err_d.^2, 'omitnan');
+        end
+        grad_d = (J_d - J_nom) / delta_d;
+        kd = kd - delta_d;
+        
+        % --- Step E: Update Parameters (FIX B: Gradient Clipping) ---
+        step_p = alpha_p * grad_p;
+        step_i = alpha_i * grad_i;
+        step_d = alpha_d * grad_d;
+        
+        % Clip updates to protect against erratic cost landscape cliffs
+        step_p = sign(step_p) * min(abs(step_p), max_step_kp);
+        step_i = sign(step_i) * min(abs(step_i), max_step_ki);
+        step_d = sign(step_d) * min(abs(step_d), max_step_kd);
+        
+        % Apply safe updates
+        kp = max(0.001, kp - step_p);
+        ki = max(0.001, ki - step_i);
+        kd = max(0.000, kd - step_d);
     end
     
     % Save tuned parameters
@@ -167,6 +221,13 @@ for i = 1:3
     fprintf('%-15s | %12.4f | %12.4f | %12.4f\n', ...
         input_names{i}, rmse_matrix(i, 1), rmse_matrix(i, 2), rmse_matrix(i, 3));
 end
+fprintf('------------------------------------------------------------\n');
+
+% Print Final Tuned PID Gains for each controller
+fprintf('%-15s | %12.4f | %12.4f | %12.4f\n', 'Final Kp', tuned_kp(1), tuned_kp(2), tuned_kp(3));
+fprintf('%-15s | %12.4f | %12.4f | %12.4f\n', 'Final Ki', tuned_ki(1), tuned_ki(2), tuned_ki(3));
+fprintf('%-15s | %12.4f | %12.4f | %12.4f\n', 'Final Kd', tuned_kd(1), tuned_kd(2), tuned_kd(3));
+
 fprintf('------------------------------------------------------------\n');
 
 %% 6. Figure 1: Controller Cross-Validation (Responses & Errors)
