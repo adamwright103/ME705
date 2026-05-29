@@ -1,0 +1,142 @@
+clear; clc; close all;
+set(0, 'DefaultFigureWindowStyle', 'docked');
+[num_Hs, den_Hs] = setupGantryModel(1.5);
+
+%% 1. Define Initial Controller Parameters
+% Starting discrete PID gains
+kp = 300; 
+ki = 5;
+kd = 0.23;
+Ts = 0.02; % Sample time
+
+%% 2. Define the Step Trajectory
+t_traj = (0:0.001:6)';
+p_traj = zeros(size(t_traj));
+p_traj(t_traj >= 0 & t_traj < 1) = 0.1;
+p_traj(t_traj >= 1 & t_traj < 2) = 0.5;
+p_traj(t_traj >= 2 & t_traj < 3) = 0.4;
+p_traj(t_traj >= 3 & t_traj < 4) = 0.15;
+p_traj(t_traj >= 4 & t_traj <= 6) = 0;
+Trajectory = timeseries(p_traj, t_traj);
+
+%% 3. Iterative Tuning (Gradient Descent) Parameters
+num_iterations = 60; % Number of IFT loops
+delta = 1e-4;        % Small perturbation for finite difference gradient calculation
+
+% Learning rates (You may need to tune these if convergence is too slow or unstable)
+alpha_p = 5000000;   
+alpha_i = 50000;   
+alpha_d = 500; 
+
+% Array to store the cost history for plotting
+J_history = zeros(num_iterations, 1);
+
+fprintf('Starting Iterative Tuning...\n');
+fprintf('--------------------------------------------------\n');
+
+for iter = 1:num_iterations
+    
+    % --- Step A: Nominal Simulation ---
+    simOut = sim('MotorSlider_Sim_IFT.slx', 'StopTime', '6');
+    
+    % Extract error handling both timeseries and array formats
+    if isa(simOut.error, 'timeseries')
+        err_nom = simOut.error.Data;
+    else
+        err_nom = simOut.error;
+    end
+    
+    % Calculate Nominal Cost (Mean Squared Error)
+    J_nom = mean(err_nom.^2, 'omitnan');
+    J_history(iter) = J_nom;
+    
+    fprintf('Iter %2d | Kp: %6.4f | Ki: %6.4f | Kd: %6.4f | RMSE: %.6f\n', ...
+            iter, kp, ki, kd, J_nom);
+        
+    % --- Step B: Perturb Kp and calculate gradient ---
+    kp = kp + delta; % Perturb
+    simOut = sim('MotorSlider_Sim_IFT.slx', 'StopTime', '6');
+    if isa(simOut.error, 'timeseries')
+        err_p = simOut.error.Data;
+    else
+        err_p = simOut.error;
+    end
+    J_p = mean(err_p.^2, 'omitnan');
+    grad_p = (J_p - J_nom) / delta;
+    kp = kp - delta; % Reset Kp
+    
+    % --- Step C: Perturb Ki and calculate gradient ---
+    ki = ki + delta; % Perturb
+    simOut = sim('MotorSlider_Sim_IFT.slx', 'StopTime', '6');
+    if isa(simOut.error, 'timeseries')
+        err_i = simOut.error.Data;
+    else
+        err_i = simOut.error;
+    end
+    J_i = mean(err_i.^2, 'omitnan');
+    grad_i = (J_i - J_nom) / delta;
+    ki = ki - delta; % Reset Ki
+    
+    % --- Step D: Perturb Kd and calculate gradient ---
+    kd = kd + delta; % Perturb
+    simOut = sim('MotorSlider_Sim_IFT.slx', 'StopTime', '6');
+    if isa(simOut.error, 'timeseries')
+        err_d = simOut.error.Data;
+    else
+        err_d = simOut.error;
+    end
+    J_d = mean(err_d.^2, 'omitnan');
+    grad_d = (J_d - J_nom) / delta;
+    kd = kd - delta; % Reset Kd
+    
+    % --- Step E: Update Parameters ---
+    % Apply Gradient Descent: rho = rho - alpha * gradient
+    kp = kp - alpha_p * grad_p;
+    ki = ki - alpha_i * grad_i;
+    kd = kd - alpha_d * grad_d;
+    
+    % Optional Safety Guard: Prevent negative gains
+    kp = max(0.001, kp);
+    ki = max(0.001, ki);
+    kd = max(0.000, kd);
+end
+
+fprintf('--------------------------------------------------\n');
+fprintf('Tuning Complete!\n');
+
+%% 4. Final Simulation with Optimized Parameters
+simOut = sim('MotorSlider_Sim_IFT.slx', 'StopTime', '6');
+
+if isa(simOut.Position, 'timeseries')
+    act_time = simOut.Position.Time;
+    act_pos  = simOut.Position.Data;
+else
+    act_time = simOut.tout;
+    act_pos  = simOut.Position;
+end
+
+% Final RMSE calculation
+ref_pos_interp = interp1(t_traj, p_traj, act_time, 'previous');
+final_error_signal = ref_pos_interp - act_pos;
+final_rmse = sqrt(mean(final_error_signal.^2, 'omitnan'));
+
+%% 5. Plot Results
+% Figure 1: Convergence History
+figure;
+plot(1:num_iterations, J_history, 'k-o', 'LineWidth', 1.5, 'MarkerFaceColor', 'k');
+grid on;
+title('IFT Convergence: Mean Squared Error vs Iteration');
+xlabel('Iteration Number');
+ylabel('Cost Function (MSE)');
+
+% Figure 2: Trajectory Tracking
+figure;
+plot(t_traj, p_traj*1000, 'b--', 'LineWidth', 1.5);
+hold on;
+plot(act_time, act_pos*1000, 'r-', 'LineWidth', 1.5);
+hold off;
+grid on;
+title(sprintf('Optimized PID Tracking (Final RMSE: %.4f mm)', final_rmse));
+xlabel('Time (seconds)');
+ylabel('Carriage Position (mm)');
+legend('Reference Trajectory', 'Actual Position', 'Location', 'northeast');
