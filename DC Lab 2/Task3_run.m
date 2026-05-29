@@ -1,46 +1,52 @@
 clear; clc; close all;
 set(0, 'DefaultFigureWindowStyle', 'docked');
+
 [num_Hs, den_Hs] = setupGantryModel(1.5); 
 
-%% 1. Define Common Parameters & Trajectories
+%% 1. Load Trajectories from .mat Files
 Ts = 0.02; % Sample time
 
-% --- Input 1: Step Trajectory (6 seconds) ---
-t_step = (0:0.001:6)';
-p_step = zeros(size(t_step));
-p_step(t_step >= 0 & t_step < 1) = 0.1;
-p_step(t_step >= 1 & t_step < 2) = 0.5;
-p_step(t_step >= 2 & t_step < 3) = 0.4;
-p_step(t_step >= 3 & t_step < 4) = 0.15;
-p_step(t_step >= 4 & t_step <= 6)  = 0;
+% Load files into separate structures to prevent 'traj' variable name collisions
+step_file   = load('steps.mat');
+ramp_file   = load('ramps.mat');
+smooth_file = load('trajectory.mat');
 
-% --- Input 2: Ramp Trajectory (10 seconds, Scaled to meters) ---
-t_10s = linspace(0, 10, 1000)';
-t_ramp = [0, 2.2, 3.5,  5,  6.2,   8,    9, 10]';
-y_ramp = [0, 460, 460,  0,    0, -230, -230,  0]' / 1000; 
-p_ramp = interp1(t_ramp, y_ramp, t_10s, 'linear');
+% Extract and flatten data/time vectors from the timeseries objects
+t_step   = step_file.traj.Time;
+p_step   = squeeze(step_file.traj.Data);
 
-% --- Input 3: Smooth Trajectory (10 seconds, Scaled to meters) ---
-t_traj = [0, 1.5,   3, 4.5,  6, 7.5,  8.8, 10]';
-y_traj = [0, 350, 180, 180, 20, -10, -110,  0]' / 1000;
-p_smooth = spline(t_traj, y_traj, t_10s);
+t_ramp   = ramp_file.traj.Time;
+p_ramp   = squeeze(ramp_file.traj.Data);
+
+t_smooth = smooth_file.traj.Time;
+p_smooth = squeeze(smooth_file.traj.Data);
 
 % --- Store inputs and configurations for looping ---
-inputs_data = {p_step, p_ramp, p_smooth};
-inputs_time = {t_step, t_10s, t_10s};
-input_names = {'Step', 'Ramp', 'Smooth'};
-stop_times  = {'6', '10', '10'};
+inputs_data = {p_step / 1000, p_ramp / 1000, p_smooth / 1000};
+inputs_time = {t_step, t_ramp, t_smooth};
+input_names = {'Step', 'Ramp', 'Trajectory'};
+
+% Dynamically set stop times based on the final time entry of each file
+stop_times  = {num2str(t_step(end)), num2str(t_ramp(end)), num2str(t_smooth(end))};
 interp_meth = {'previous', 'linear', 'linear'}; % 'previous' keeps step edges sharp
 
 %% 2. Iterative Tuning (IFT) Setup
-num_iterations = 25; 
-delta = 1e-4;        
-alpha_p = 5000000; alpha_i = 50000; alpha_d = 500; 
+num_iterations = 30; 
+delta = 1e-2;        
+alpha_p = 500000;     % Down from 500,000
+alpha_i = 5000;    % Down from 5,000
+alpha_d = 300;   % Down from 300
 
 % Arrays to store the final tuned parameters
 tuned_kp = zeros(1, 3);
 tuned_ki = zeros(1, 3);
 tuned_kd = zeros(1, 3);
+
+% Arrays to store historical data for iteration plotting
+history_rmse = zeros(3, num_iterations);
+history_kp = zeros(3, num_iterations);
+history_ki = zeros(3, num_iterations);
+history_kd = zeros(3, num_iterations);
 
 %% 3. Train Controllers
 for i = 1:3
@@ -49,7 +55,7 @@ for i = 1:3
     fprintf('==================================================\n');
     
     % Reset to initial gains for each training session
-    kp = 265.8; ki = 0.001; kd = 0.42;
+    kp = 265.8; ki = 1; kd = 0.1;
     
     % Set the current training trajectory and stop time
     t_current = inputs_time{i};
@@ -61,6 +67,12 @@ for i = 1:3
         simOut = sim('MotorSlider_Sim_IFT.slx', 'StopTime', t_stop);
         if isa(simOut.error, 'timeseries'); err_nom = simOut.error.Data; else; err_nom = simOut.error; end
         J_nom = mean(err_nom.^2, 'omitnan');
+        
+        % Store history for plots (convert MSE to RMSE in mm)
+        history_rmse(i, iter) = sqrt(J_nom) * 1000; 
+        history_kp(i, iter) = kp;
+        history_ki(i, iter) = ki;
+        history_kd(i, iter) = kd;
         
         fprintf('Iter %2d | Kp: %6.4f | Ki: %6.4f | Kd: %6.4f | MSE: %.6f\n', iter, kp, ki, kd, J_nom);
             
@@ -94,7 +106,7 @@ for i = 1:3
         kd = max(0.000, kd - alpha_d * grad_d);
     end
     
-    % Save trained parameters
+    % Save tuned parameters
     tuned_kp(i) = kp;
     tuned_ki(i) = ki;
     tuned_kd(i) = kd;
@@ -131,14 +143,17 @@ for input_idx = 1:3
             act_pos  = simOut.Position;
         end
         
-        % Calculate Final RMSE (in mm) using the appropriate interpolation method
+% Calculate Final RMSE (in mm) using the appropriate interpolation method
         ref_pos_interp = interp1(t_current, inputs_data{input_idx}, act_time, interp_meth{input_idx});
-        final_error = (ref_pos_interp - act_pos) * 1000; % Convert error to mm
-        rmse_matrix(input_idx, ctrl_idx) = sqrt(mean(final_error.^2, 'omitnan'));
+        final_error = (ref_pos_interp - act_pos); % Both are now beautifully in meters
         
+        % Multiply by 1000 here so the printed table displays in mm
+        rmse_matrix(input_idx, ctrl_idx) = sqrt(mean(final_error.^2, 'omitnan')) * 1000;
+
         % Store response for plotting
         responses{input_idx, ctrl_idx}.time = act_time;
         responses{input_idx, ctrl_idx}.pos = act_pos;
+        responses{input_idx, ctrl_idx}.error = final_error; 
     end
 end
 
@@ -154,12 +169,12 @@ for i = 1:3
 end
 fprintf('------------------------------------------------------------\n');
 
-%% 6. Plotting the 3x3 Results
-figure('Name', 'Controller Cross-Validation', 'Position', [50, 100, 1400, 400]);
+%% 6. Figure 1: Controller Cross-Validation (Responses & Errors)
+figure('Name', 'Controller Cross-Validation');
 colors = {'#D95319', '#EDB120', '#7E2F8E'}; % Unique colors for controllers
-
 for i = 1:3
-    subplot(1, 3, i);
+    % --- Top Row: Position Responses ---
+    subplot(2, 3, i);
     hold on; grid on;
     
     % Plot Reference
@@ -169,14 +184,66 @@ for i = 1:3
     for j = 1:3
         plot(responses{i, j}.time, responses{i, j}.pos * 1000, ...
             'Color', colors{j}, 'LineWidth', 1.2, ...
-            'DisplayName', sprintf('Controller %d (%s-trained)', j, input_names{j}));
+            'DisplayName', sprintf('Ctrl %d (%s-trained)', j, input_names{j}));
     end
     
     title(sprintf('Input: %s', input_names{i}), 'FontWeight', 'bold');
-    xlabel('Time (seconds)');
+    xlabel('Time (s)');
     if i == 1
         ylabel('Carriage Position (mm)');
     end
     legend('Location', 'best');
-    xlim([0, str2double(stop_times{i})]); % Set x-axis limit dynamically
+    xlim([0, str2double(stop_times{i})]); 
+    
+    % --- Bottom Row: Errors Over Time ---
+    subplot(2, 3, i + 3);
+    hold on; grid on;
+    
+    for j = 1:3
+        plot(responses{i, j}.time, responses{i, j}.error * 1000, ... 
+            'Color', colors{j}, 'LineWidth', 1.2, ...
+            'DisplayName', sprintf('Ctrl %d Error', j));
+    end
+    
+    title(sprintf('%s Error', input_names{i}), 'FontWeight', 'bold');
+    xlabel('Time (s)');
+    if i == 1
+        ylabel('Error (mm)');
+    end
+    legend('Location', 'best');
+    xlim([0, str2double(stop_times{i})]);
+end
+
+%% 7. Figure 2: IFT Process (RMSE vs Iteration)
+figure('Name', 'IFT Convergence');
+for i = 1:3
+    subplot(1, 3, i); % Creates a 1-row, 3-column layout
+    
+    plot(1:num_iterations, history_rmse(i, :), 'Color', colors{i}, ...
+        'LineWidth', 2, 'Marker', 'o', 'DisplayName', sprintf('%s Training', input_names{i}));
+    
+    grid on;
+    title(sprintf('%s Controller Convergence', input_names{i}), 'FontWeight', 'bold');
+    xlabel('Iteration Number');
+    ylabel('RMSE (mm)');
+    legend('Location', 'best');
+end
+
+%% 8. Figure 3: Controller Gains vs Iteration
+figure('Name', 'Controller Gains Evolution');
+gain_names = {'Kp', 'Ki', 'Kd'};
+history_gains = {history_kp, history_ki, history_kd};
+for g = 1:3
+    subplot(1, 3, g);
+    hold on; grid on;
+    
+    for i = 1:3
+        plot(1:num_iterations, history_gains{g}(i, :), 'Color', colors{i}, ...
+            'LineWidth', 1.5, 'Marker', '.', 'DisplayName', sprintf('%s Training', input_names{i}));
+    end
+    
+    title(sprintf('%s Gain vs Iteration', gain_names{g}), 'FontWeight', 'bold');
+    xlabel('Iteration Number');
+    ylabel('Gain Value');
+    legend('Location', 'best');
 end
